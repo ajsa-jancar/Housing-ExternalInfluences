@@ -79,8 +79,10 @@ def initial_price_dist(m, n, v, amenities, empty_ratio=0.1):
     numpy.ndarray: A 2D grid with houses all the same price, empty space and amenities.
     """
     houses = v * new_grid(m, n, empty_ratio)
-    # Add "amenities" number of amenities within the empty grid points
-    houses = add_amenities(houses, amenities)
+    
+    if amenities != 0:
+        # Add "amenities" number of amenities within the empty grid points
+        houses = add_amenities(houses, amenities)
 
     return houses
 
@@ -438,3 +440,64 @@ def modify_existing_prices(house_vals, num_houses=1, random=True, pos=None, new_
             house_vals[tuple(idx)] = new_value
     
     return house_vals
+
+# Spatial Segregation (Biorthogonal Decomposition) - the degree to which different income groups of agents are clustered together in our final distribution
+# We are calculating expected entropy (which represents a random distribution) and subtracting it from actual entropy
+# The more segregated the final distribution, the smaller the (positive) entropy value, thus the smaller the segregation index 
+
+# We must first treat amenities and empty spaces. We have the option to 
+# 1 Replace with zero:
+# produces a higher HBO(A) since it introduces neutral or absent data points that don’t contribute to the spatial arrangement of the population and create more disorder (so more entropy)
+# 1 Replace with mean:
+# produces a lower HBO(A) as we have a more ordered system and continuous patterns (so less entropy)
+
+
+def biorthogonal_decomposition_entropy(U, fill_with_mean):
+    
+    def preprocess_matrix(U, fill_with_mean):
+        # Replace -1 values (invalid amenities) with NaN
+        U[U == -1] = np.nan
+        
+        # Replace NaN values (empty spaces and amenities)
+        if fill_with_mean:
+            mean_value = np.nanmean(U)  # Compute the mean, ignoring NaNs
+            U = np.nan_to_num(U, nan=mean_value)  # Replace NaNs with the mean
+        else:
+            U = np.nan_to_num(U, nan=0.0)  # Replace NaNs with 0.0
+        return U
+
+    # Handle NaNs and (-1) values (empty spaces and amenities)
+    U = preprocess_matrix(U, fill_with_mean)
+    # Compute covariance matrix Q
+    Q = np.dot(U.T, U) 
+    
+    # Eigenvalue decomposition of Q
+    eigenvalues, eigenvectors = np.linalg.eig(Q)
+    
+    # Normalize eigenvalues
+    total_sum = np.sum(eigenvalues)
+    p_i = eigenvalues / total_sum  
+    
+    # Calculate entropy of the biorthogonal decomposition (HBO) - Shannon entropy formula
+    entropy = -np.sum(p_i * np.log(p_i)) 
+    
+    return entropy, p_i
+
+def segregation_index(U, fill_with_mean=False):
+    
+    def expected_entropy(n):
+        # Compute the expected entropy for a random distribution (E(HBO)) - based formula found in the paper, E(HBO) ≈ log(3/5 * n)
+        return np.log(3/5 * n)
+
+    # Calculate HBO(A) for the actual distribution U - when the segregation is large, this tends to be small 
+    entropy_U, _ = biorthogonal_decomposition_entropy(U, fill_with_mean)
+    # print(f"entropy: {entropy_U}")
+    
+    # Calculate expected entropy (E(HBO)) for a random distribution
+    n = U.shape[0]  
+    entropy_expected = expected_entropy(n)
+    # print(f"expected entropy: {entropy_expected}")
+    
+    # Calculate segregation index SBO(A)
+    SBO = entropy_U - entropy_expected
+    return SBO
