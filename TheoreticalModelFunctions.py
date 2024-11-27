@@ -102,7 +102,7 @@ def plot_grid(grid):
     # Colour map for house prices only
     cmap = plt.cm.cividis.copy()
     
-    # Set pink for NaN values 
+    # Set white for NaN values 
     cmap.set_bad(color='white')
     
     # Calculate the minimum and maximum values in the grid, excluding NaN and -1 values (amenities)
@@ -454,9 +454,7 @@ def modify_existing_prices(house_vals, num_houses=1, random=True, pos=None, new_
 
 def biorthogonal_decomposition_entropy(U, fill_with_mean):
     
-    def preprocess_matrix(U, fill_with_mean):
-        # Replace -1 values (invalid amenities) with NaN
-        U[U == -1] = np.nan
+    def preprocess_matrix(U, fill_with_mean):   
         
         # Replace NaN values (empty spaces and amenities)
         if fill_with_mean:
@@ -466,9 +464,9 @@ def biorthogonal_decomposition_entropy(U, fill_with_mean):
             U = np.nan_to_num(U, nan=0.0)  # Replace NaNs with 0.0
         return U
 
-    # Handle NaNs and (-1) values (empty spaces and amenities)
+    # Handle NaNs (unpopulated spaces)
     U = preprocess_matrix(U, fill_with_mean)
-    # Compute covariance matrix Q
+    # Compute covariance matrix 
     Q = np.dot(U.T, U) 
     
     # Eigenvalue decomposition of Q
@@ -492,7 +490,7 @@ def segregation_index(U, fill_with_mean=False):
     # Calculate HBO(A) for the actual distribution U - when the segregation is large, this tends to be small 
     entropy_U, _ = biorthogonal_decomposition_entropy(U, fill_with_mean)
     # print(f"entropy: {entropy_U}")
-    
+
     # Calculate expected entropy (E(HBO)) for a random distribution
     n = U.shape[0]  
     entropy_expected = expected_entropy(n)
