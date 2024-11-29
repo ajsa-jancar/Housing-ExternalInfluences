@@ -208,6 +208,10 @@ def amenities_impact(house_vals, x, r):
     Returns:
     float: The total value added by amenities within the Manhattan radius `r`. The closer an amenity 
     is, the more value it adds (decreases linearly with distance.)
+    
+    IMPORTANT: This function effectively exactly executes exactly the formula in the notes, however, for 
+    computational efficiency, we do not consider amenities outside of the radius r as these would not contribute anyway
+    (since distance would exceed r+1).
     """
     i, j = x[0], x[1]
     m, n = house_vals.shape[0], house_vals.shape[1]
